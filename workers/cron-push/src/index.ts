@@ -84,11 +84,13 @@ async function runTick(env: Env): Promise<{
     for (const meal of MEAL_KEYS) {
       if (reminders[meal] !== hhmm) continue;
 
-      // Dedup: have we already fired this (subscription, date, meal)?
+      // Dedup: have we already fired this (subscription, date, meal, time)?
+      // Einschluss der Uhrzeit erlaubt einen neuen Push, wenn der Nutzer
+      // die Reminder-Zeit geändert hat.
       const already = await env.DB.prepare(
-        "SELECT 1 FROM push_fired WHERE subscription_id = ? AND date = ? AND meal = ?",
+        "SELECT 1 FROM push_fired WHERE subscription_id = ? AND date = ? AND meal = ? AND time = ?",
       )
-        .bind(row.id, dateKey, meal)
+        .bind(row.id, dateKey, meal, hhmm)
         .first();
       if (already) continue;
 
@@ -114,10 +116,10 @@ async function runTick(env: Env): Promise<{
       if (r.ok) {
         sent++;
         await env.DB.prepare(
-          `INSERT OR IGNORE INTO push_fired (subscription_id, date, meal, fired_at)
-           VALUES (?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO push_fired (subscription_id, date, meal, time, fired_at)
+           VALUES (?, ?, ?, ?, ?)`,
         )
-          .bind(row.id, dateKey, meal, Date.now())
+          .bind(row.id, dateKey, meal, hhmm, Date.now())
           .run();
         await env.DB.prepare(
           "UPDATE push_subscriptions SET last_sent_at = ? WHERE id = ?",
