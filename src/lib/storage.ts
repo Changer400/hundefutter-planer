@@ -1,9 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppState, DayKey } from "./types";
-
-function dataKey(username: string): string {
-  return `hp:data:${username}`;
-}
 
 export function defaultState(): AppState {
   const weekPlan = {} as Record<DayKey, "TF" | "BARF">;
@@ -166,36 +162,130 @@ export function builtinAppointments() {
   ];
 }
 
-export function loadState(username: string): AppState {
-  if (typeof window === "undefined") return defaultState();
+function mergeWithDefaults(raw: unknown): AppState {
+  if (!raw || typeof raw !== "object") return defaultState();
+  return { ...defaultState(), ...(raw as Partial<AppState>) };
+}
+
+async function fetchRemoteState(): Promise<AppState | null> {
   try {
-    const raw = window.localStorage.getItem(dataKey(username));
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw) as Partial<AppState>;
-    return { ...defaultState(), ...parsed };
+    const res = await fetch("/api/state", { credentials: "same-origin" });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data: unknown };
+    if (body.data === null || body.data === undefined) return null;
+    return mergeWithDefaults(body.data);
   } catch {
-    return defaultState();
+    return null;
   }
 }
 
-export function saveState(username: string, state: AppState) {
-  if (typeof window === "undefined") return;
+async function putRemoteState(state: AppState): Promise<void> {
   try {
-    window.localStorage.setItem(dataKey(username), JSON.stringify(state));
+    await fetch("/api/state", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state),
+    });
   } catch {
-    // ignore
+    /* noop */
   }
 }
+
+function readLegacyLocalState(username: string): AppState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(`hp:data:${username}`);
+    if (!raw) return null;
+    return mergeWithDefaults(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function clearLegacyLocalState(username: string): void {
+  try {
+    window.localStorage.removeItem(`hp:data:${username}`);
+  } catch {
+    /* noop */
+  }
+}
+
+export type AppStateStatus = "loading" | "ready" | "error";
 
 export function useAppState(
   username: string,
-): [AppState, (u: (s: AppState) => AppState) => void] {
-  const [state, setState] = useState<AppState>(() => loadState(username));
+): [
+  AppState,
+  (u: (s: AppState) => AppState) => void,
+  AppStateStatus,
+  { lastSavedAt: number | null; saving: boolean },
+] {
+  const [state, setState] = useState<AppState>(() => defaultState());
+  const [status, setStatus] = useState<AppStateStatus>("loading");
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const loadedRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    saveState(username, state);
-  }, [username, state]);
+    let cancelled = false;
+    loadedRef.current = false;
 
-  const update = (u: (s: AppState) => AppState) => setState((s) => u(s));
-  return [state, update];
+    (async () => {
+      const remote = await fetchRemoteState();
+      if (cancelled) return;
+      if (remote) {
+        setState(remote);
+        loadedRef.current = true;
+        setStatus("ready");
+        return;
+      }
+      const legacy = readLegacyLocalState(username);
+      if (legacy) {
+        setState(legacy);
+        loadedRef.current = true;
+        setStatus("ready");
+        setSaving(true);
+        await putRemoteState(legacy);
+        if (!cancelled) {
+          clearLegacyLocalState(username);
+          setLastSavedAt(Date.now());
+          setSaving(false);
+        }
+        return;
+      }
+      setState(defaultState());
+      loadedRef.current = true;
+      setStatus("ready");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [username]);
+
+  useEffect(() => {
+    if (!loadedRef.current) return;
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = window.setTimeout(async () => {
+      setSaving(true);
+      await putRemoteState(state);
+      setLastSavedAt(Date.now());
+      setSaving(false);
+    }, 500);
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [state]);
+
+  const update = useCallback(
+    (u: (s: AppState) => AppState) => setState((s) => u(s)),
+    [],
+  );
+  return [state, update, status, { lastSavedAt, saving }];
 }

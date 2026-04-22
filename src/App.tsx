@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { InputSection } from "./components/InputSection";
 import { StockSection } from "./components/StockSection";
 import { RemindersSection } from "./components/RemindersSection";
@@ -8,8 +8,33 @@ import { ShoppingList } from "./components/ShoppingList";
 import { WeightDev } from "./components/WeightDev";
 import { Appointments } from "./components/Appointments";
 import { PasswordGate } from "./components/PasswordGate";
-import { clearCurrentUser, getCurrentUser } from "./lib/auth";
+import { checkAuth, logoutAccount } from "./lib/auth";
 import { useAppState } from "./lib/storage";
+
+function SyncBadge({
+  status,
+  saving,
+  lastSavedAt,
+}: {
+  status: "loading" | "ready" | "error";
+  saving: boolean;
+  lastSavedAt: number | null;
+}) {
+  let text = "";
+  let cls = "text-slate-400";
+  if (status === "loading") {
+    text = "lädt…";
+  } else if (saving) {
+    text = "speichert…";
+    cls = "text-amber-300";
+  } else if (lastSavedAt) {
+    text = "synchron";
+    cls = "text-emerald-300";
+  } else {
+    text = "bereit";
+  }
+  return <span className={`text-xs ${cls}`}>{text}</span>;
+}
 
 function AppForUser({
   username,
@@ -18,7 +43,7 @@ function AppForUser({
   username: string;
   onLogout: () => void;
 }) {
-  const [state, update] = useAppState(username);
+  const [state, update, status, sync] = useAppState(username);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -30,6 +55,11 @@ function AppForUser({
           BARF & Trockenfutter · Wochenplan · Einkaufsliste · Termine
         </p>
         <div className="absolute top-4 right-4 flex items-center gap-2 text-xs">
+          <SyncBadge
+            status={status}
+            saving={sync.saving}
+            lastSavedAt={sync.lastSavedAt}
+          />
           <span className="text-slate-400 hidden sm:inline">
             Eingeloggt als <span className="text-emerald-300">{username}</span>
           </span>
@@ -43,40 +73,66 @@ function AppForUser({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4">
-        <InputSection state={state} update={update} />
-        <StockSection state={state} update={update} />
-        <RemindersSection state={state} update={update} />
-        <WeekPlan state={state} update={update} />
-        <Supplements />
-        <ShoppingList state={state} update={update} />
-        <WeightDev state={state} />
-        <Appointments state={state} update={update} />
-      </main>
+      {status === "loading" ? (
+        <main className="max-w-6xl mx-auto p-3 sm:p-6">
+          <p className="text-slate-400 text-sm">Daten werden geladen…</p>
+        </main>
+      ) : (
+        <main className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4">
+          <InputSection state={state} update={update} />
+          <StockSection state={state} update={update} />
+          <RemindersSection state={state} update={update} />
+          <WeekPlan state={state} update={update} />
+          <Supplements />
+          <ShoppingList state={state} update={update} />
+          <WeightDev state={state} />
+          <Appointments state={state} update={update} />
+        </main>
+      )}
 
       <footer className="py-6 text-center text-xs text-slate-500">
-        Alle Daten werden lokal in deinem Browser gespeichert · © Hundefutter-Planer
+        Daten werden sicher auf Cloudflare gespeichert · © Hundefutter-Planer
       </footer>
     </div>
   );
 }
 
 function App() {
-  const [currentUser, setCurrentUserState] = useState<string | null>(() =>
-    getCurrentUser(),
-  );
+  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const u = await checkAuth();
+      if (cancelled) return;
+      setCurrentUser(u);
+      setChecking(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
+        Laden…
+      </div>
+    );
+  }
 
   if (!currentUser) {
-    return <PasswordGate onUnlock={(u) => setCurrentUserState(u)} />;
+    return <PasswordGate onUnlock={(u) => setCurrentUser(u)} />;
   }
 
   return (
     <AppForUser
       key={currentUser}
       username={currentUser}
-      onLogout={() => {
-        clearCurrentUser();
-        setCurrentUserState(null);
+      onLogout={async () => {
+        await logoutAccount();
+        setCurrentUser(null);
       }}
     />
   );

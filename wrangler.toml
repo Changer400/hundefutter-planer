@@ -1,0 +1,8 @@
+name = "hundefutter-planer"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hundefutter-planer"
+database_id = "9e9f9c41-74c6-4489-ab8a-7022d4bb13bb"

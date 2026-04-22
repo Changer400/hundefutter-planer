@@ -1,9 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  hasAnyAccount,
-  loginAccount,
-  registerAccount,
-} from "../lib/auth";
+import { loginAccount, registerAccount } from "../lib/auth";
 
 type Mode = "login" | "register";
 
@@ -12,7 +8,7 @@ export function PasswordGate({
 }: {
   onUnlock: (username: string) => void;
 }) {
-  const [mode, setMode] = useState<Mode>(hasAnyAccount() ? "login" : "register");
+  const [mode, setMode] = useState<Mode>("login");
   const [user, setUser] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -76,7 +72,7 @@ export function PasswordGate({
             autoFocus
             value={user}
             onChange={(e) => setUser(e.target.value)}
-            autoComplete={isRegister ? "username" : "username"}
+            autoComplete="username"
           />
         </label>
         <label className="block">
@@ -129,9 +125,8 @@ export function PasswordGate({
           )}
         </div>
         <p className="text-[11px] text-slate-500 text-center">
-          Konten und Daten werden nur in diesem Browser gespeichert – sie werden
-          nicht auf einen Server gesendet und nicht zwischen Geräten
-          synchronisiert.
+          Dein Konto und deine Daten liegen auf dem Server und werden zwischen
+          deinen Geräten synchronisiert. Passwort-Minimum: 8 Zeichen.
         </p>
       </form>
     </div>
