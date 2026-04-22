@@ -20,6 +20,10 @@ Eine responsive Web-App (PC & Handy) für die Futterplanung deines Hundes. Inspi
 - Vite 8
 - Tailwind CSS v4
 
+## Self-Hosting
+
+Der Ordner [`self-hosted/`](./self-hosted/) enthält einen vollständigen Node.js-Port (Hono + SQLite + Docker + Caddy), mit dem die App unabhängig von Cloudflare betrieben werden kann. Anleitung: [SELF_HOSTING.md](./SELF_HOSTING.md).
+
 ## Entwicklung
 
 ```bash

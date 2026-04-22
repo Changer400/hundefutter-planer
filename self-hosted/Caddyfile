@@ -1,0 +1,7 @@
+# Caddy config: automatic Let's Encrypt HTTPS for {$DOMAIN}.
+# For local testing without TLS, set DOMAIN=:80 in .env.
+
+{$DOMAIN} {
+	encode gzip zstd
+	reverse_proxy app:8787
+}
