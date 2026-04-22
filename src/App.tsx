@@ -8,16 +8,17 @@ import { ShoppingList } from "./components/ShoppingList";
 import { WeightDev } from "./components/WeightDev";
 import { Appointments } from "./components/Appointments";
 import { PasswordGate } from "./components/PasswordGate";
-import { isAuthConfigured, isUnlocked, lock } from "./lib/auth";
+import { clearCurrentUser, getCurrentUser } from "./lib/auth";
 import { useAppState } from "./lib/storage";
 
-function App() {
-  const [state, update] = useAppState();
-  const [unlocked, setUnlocked] = useState<boolean>(() => isUnlocked());
-
-  if (isAuthConfigured() && !unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  }
+function AppForUser({
+  username,
+  onLogout,
+}: {
+  username: string;
+  onLogout: () => void;
+}) {
+  const [state, update] = useAppState(username);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -28,18 +29,18 @@ function App() {
         <p className="mt-1 text-sm text-slate-400">
           BARF & Trockenfutter · Wochenplan · Einkaufsliste · Termine
         </p>
-        {isAuthConfigured() && (
+        <div className="absolute top-4 right-4 flex items-center gap-2 text-xs">
+          <span className="text-slate-400 hidden sm:inline">
+            Eingeloggt als <span className="text-emerald-300">{username}</span>
+          </span>
           <button
             type="button"
-            onClick={() => {
-              lock();
-              setUnlocked(false);
-            }}
-            className="absolute top-4 right-4 text-xs text-slate-400 hover:text-emerald-300 border border-slate-700 rounded px-2 py-1"
+            onClick={onLogout}
+            className="text-slate-400 hover:text-emerald-300 border border-slate-700 rounded px-2 py-1"
           >
             Abmelden
           </button>
-        )}
+        </div>
       </header>
 
       <main className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4">
@@ -57,6 +58,27 @@ function App() {
         Alle Daten werden lokal in deinem Browser gespeichert · © Hundefutter-Planer
       </footer>
     </div>
+  );
+}
+
+function App() {
+  const [currentUser, setCurrentUserState] = useState<string | null>(() =>
+    getCurrentUser(),
+  );
+
+  if (!currentUser) {
+    return <PasswordGate onUnlock={(u) => setCurrentUserState(u)} />;
+  }
+
+  return (
+    <AppForUser
+      key={currentUser}
+      username={currentUser}
+      onLogout={() => {
+        clearCurrentUser();
+        setCurrentUserState(null);
+      }}
+    />
   );
 }
 

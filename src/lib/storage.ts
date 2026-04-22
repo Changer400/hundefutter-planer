@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { AppState, DayKey } from "./types";
 
-const STORAGE_KEY = "hundefutter-planer:v1";
+function dataKey(username: string): string {
+  return `hp:data:${username}`;
+}
 
 export function defaultState(): AppState {
   const weekPlan = {} as Record<DayKey, "TF" | "BARF">;
@@ -164,10 +166,10 @@ export function builtinAppointments() {
   ];
 }
 
-export function loadState(): AppState {
+export function loadState(username: string): AppState {
   if (typeof window === "undefined") return defaultState();
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(dataKey(username));
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw) as Partial<AppState>;
     return { ...defaultState(), ...parsed };
@@ -176,21 +178,23 @@ export function loadState(): AppState {
   }
 }
 
-export function saveState(state: AppState) {
+export function saveState(username: string, state: AppState) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(dataKey(username), JSON.stringify(state));
   } catch {
     // ignore
   }
 }
 
-export function useAppState(): [AppState, (u: (s: AppState) => AppState) => void] {
-  const [state, setState] = useState<AppState>(() => loadState());
+export function useAppState(
+  username: string,
+): [AppState, (u: (s: AppState) => AppState) => void] {
+  const [state, setState] = useState<AppState>(() => loadState(username));
 
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    saveState(username, state);
+  }, [username, state]);
 
   const update = (u: (s: AppState) => AppState) => setState((s) => u(s));
   return [state, update];
