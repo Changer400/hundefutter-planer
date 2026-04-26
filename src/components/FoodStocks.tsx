@@ -416,7 +416,7 @@ export function FoodStocks({
       {(hasTF || hasBARF) && (
         <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-sm space-y-1">
           <div className="font-semibold text-slate-200 mb-1">
-            Gesamt-Reichweite
+            Gesamter Vorrat
           </div>
           {hasTF && (
             <div className="flex justify-between gap-2">
