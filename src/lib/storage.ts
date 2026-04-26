@@ -20,6 +20,7 @@ export function defaultState(): AppState {
     weightKg: 8,
     defaultFoodType: "TF",
     stockG: 0,
+    foodStocks: [],
     lastFedDate: null,
     reminders: {
       morgens: "07:00",
@@ -164,7 +165,26 @@ export function builtinAppointments() {
 
 function mergeWithDefaults(raw: unknown): AppState {
   if (!raw || typeof raw !== "object") return defaultState();
-  return { ...defaultState(), ...(raw as Partial<AppState>) };
+  const merged = { ...defaultState(), ...(raw as Partial<AppState>) };
+  // Migration: alter `stockG` → erster Eintrag in foodStocks
+  if (
+    (!merged.foodStocks || merged.foodStocks.length === 0) &&
+    merged.stockG > 0
+  ) {
+    merged.foodStocks = [
+      {
+        id: `legacy-tf-${Date.now()}`,
+        name: "Trockenfutter",
+        amount: merged.stockG,
+        unit: "g",
+        category: "TF",
+      },
+    ];
+  }
+  if (!Array.isArray(merged.foodStocks)) {
+    merged.foodStocks = [];
+  }
+  return merged;
 }
 
 async function fetchRemoteState(): Promise<AppState | null> {
