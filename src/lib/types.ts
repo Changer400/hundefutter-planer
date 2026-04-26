@@ -70,6 +70,8 @@ export interface AppState {
   defaultFoodType: FoodType;
   stockG: number;
   lastFedDate: string | null;
+  lastFedEntryId?: string | null;
+  lastFedAmount?: number | null;
   reminders: Reminder;
   weekPlan: Record<DayKey, FoodType>;
   shoppingDone: Record<string, boolean>;

@@ -80,8 +80,6 @@ export function FoodStocks({
   const today = isoToday();
   const fedToday = state.lastFedDate === today;
   const todaysCategory: FoodCategory = state.weekPlan[todayKey()];
-  const dailyForToday =
-    todaysCategory === "BARF" ? d.barfGPerDay : d.tfGPerDay;
   const notifStatus = useNotificationStatus();
 
   const [adding, setAdding] = useState(false);
@@ -93,6 +91,51 @@ export function FoodStocks({
     category: "TF",
   });
   const stocks = state.foodStocks ?? [];
+
+  // Feed-Dialog
+  const [feedOpen, setFeedOpen] = useState(false);
+  const [feedEntryId, setFeedEntryId] = useState<string>("");
+  const [feedAmount, setFeedAmount] = useState<number>(0);
+
+  /** Vorgeschlagene Tagesmenge für einen Eintrag in dessen Einheit. */
+  const suggestedAmount = (entry: FoodStockEntry): number => {
+    if (entry.dailyConsumption && entry.dailyConsumption > 0)
+      return entry.dailyConsumption;
+    const factor = unitInGrams(entry.unit);
+    if (factor === null) return 0;
+    if (entry.category === "TF") return Math.round(d.tfGPerDay / factor);
+    if (entry.category === "BARF") return Math.round(d.barfGPerDay / factor);
+    return 0;
+  };
+
+  const openFeedDialog = () => {
+    if (stocks.length === 0) return;
+    // Voreinstellung: erster Eintrag passend zur Wochenplan-Kategorie, sonst erster überhaupt
+    const preferred =
+      stocks.find((e) => e.category === todaysCategory && e.amount > 0) ??
+      stocks.find((e) => e.amount > 0) ??
+      stocks[0];
+    setFeedEntryId(preferred.id);
+    setFeedAmount(suggestedAmount(preferred));
+    setFeedOpen(true);
+  };
+
+  const confirmFeed = () => {
+    const entry = stocks.find((e) => e.id === feedEntryId);
+    if (!entry || feedAmount <= 0) return;
+    update((s) => ({
+      ...s,
+      foodStocks: (s.foodStocks ?? []).map((e) =>
+        e.id === entry.id
+          ? { ...e, amount: Math.max(0, e.amount - feedAmount) }
+          : e,
+      ),
+      lastFedDate: today,
+      lastFedEntryId: entry.id,
+      lastFedAmount: feedAmount,
+    }));
+    setFeedOpen(false);
+  };
 
   /** Summiert Vorrat in Gramm über alle Einträge einer Kategorie (nur g/kg-Einträge). */
   const sumGrams = (cat: FoodCategory): number =>
@@ -137,60 +180,22 @@ export function FoodStocks({
     setDraft({ id: "", name: "", amount: 0, unit: "g", category: "TF" });
   };
 
-  /** „Heute gefüttert": zieht Tagesmenge vom passenden Eintrag (Kategorie, g/kg) ab. */
-  const feedToday = () => {
-    update((s) => {
-      const list = s.foodStocks ?? [];
-      const idx = list.findIndex(
-        (e) =>
-          e.category === todaysCategory &&
-          (e.unit === "g" || e.unit === "kg") &&
-          e.amount > 0,
-      );
-      let nextStocks = list;
-      if (idx >= 0) {
-        const e = list[idx];
-        const factor = unitInGrams(e.unit) ?? 1;
-        const deduct = dailyForToday / factor;
-        nextStocks = list.map((x, i) =>
-          i === idx ? { ...x, amount: Math.max(0, x.amount - deduct) } : x,
-        );
-      }
-      return {
-        ...s,
-        foodStocks: nextStocks,
-        // legacy stockG mitziehen, falls Migration noch nicht gelaufen ist
-        stockG:
-          todaysCategory === "TF"
-            ? Math.max(0, s.stockG - dailyForToday)
-            : s.stockG,
-        lastFedDate: today,
-      };
-    });
-  };
-
   const undoFeed = () => {
     update((s) => {
-      const list = s.foodStocks ?? [];
-      const idx = list.findIndex(
-        (e) =>
-          e.category === todaysCategory && (e.unit === "g" || e.unit === "kg"),
-      );
-      let nextStocks = list;
-      if (idx >= 0) {
-        const e = list[idx];
-        const factor = unitInGrams(e.unit) ?? 1;
-        const refund = dailyForToday / factor;
-        nextStocks = list.map((x, i) =>
-          i === idx ? { ...x, amount: x.amount + refund } : x,
+      const fedId = s.lastFedEntryId;
+      const fedAmt = s.lastFedAmount ?? 0;
+      let nextStocks = s.foodStocks ?? [];
+      if (fedId && fedAmt > 0) {
+        nextStocks = nextStocks.map((e) =>
+          e.id === fedId ? { ...e, amount: e.amount + fedAmt } : e,
         );
       }
       return {
         ...s,
         foodStocks: nextStocks,
-        stockG:
-          todaysCategory === "TF" ? s.stockG + dailyForToday : s.stockG,
         lastFedDate: null,
+        lastFedEntryId: null,
+        lastFedAmount: null,
       };
     });
   };
@@ -460,8 +465,8 @@ export function FoodStocks({
       <div className="mt-4 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
         <Button
           tone="emerald"
-          onClick={feedToday}
-          disabled={fedToday || dailyForToday === 0}
+          onClick={openFeedDialog}
+          disabled={fedToday || stocks.length === 0}
           className="flex-1"
         >
           {fedToday ? "✓ Heute gefüttert" : "☑️ Heute gefüttert"}
@@ -472,6 +477,56 @@ export function FoodStocks({
           </Button>
         )}
       </div>
+
+      {feedOpen && (
+        <div className="mt-3 rounded-lg border border-emerald-700 bg-emerald-900/30 p-3 space-y-2">
+          <div className="font-semibold text-emerald-200">
+            Was hast du gefüttert?
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[200px]">
+              <label className="text-xs text-slate-300 block mb-1">
+                Futter
+              </label>
+              <Select<string>
+                value={feedEntryId}
+                onChange={(v) => {
+                  setFeedEntryId(v);
+                  const e = stocks.find((s) => s.id === v);
+                  if (e) setFeedAmount(suggestedAmount(e));
+                }}
+                options={stocks.map((e) => ({
+                  value: e.id,
+                  label: `${e.name} (${formatAmount(e.amount, e.unit)})`,
+                }))}
+              />
+            </div>
+            <div className="w-32">
+              <label className="text-xs text-slate-300 block mb-1">
+                Menge ({stocks.find((e) => e.id === feedEntryId)?.unit ?? "g"})
+              </label>
+              <NumberInput
+                value={feedAmount || ""}
+                onChange={(v) => setFeedAmount(Math.max(0, v))}
+                min={0}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button tone="slate" onClick={() => setFeedOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              tone="emerald"
+              onClick={confirmFeed}
+              disabled={!feedEntryId || feedAmount <= 0}
+            >
+              Bestätigen
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-3 text-xs text-amber-300">
         {notifStatus === "granted" && "🔔 Benachrichtigungen aktiv."}
