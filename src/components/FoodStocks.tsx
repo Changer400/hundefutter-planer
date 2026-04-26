@@ -92,8 +92,6 @@ export function FoodStocks({
     unit: "g",
     category: "TF",
   });
-  const [subtractAmt, setSubtractAmt] = useState<Record<string, number>>({});
-
   const stocks = state.foodStocks ?? [];
 
   /** Summiert Vorrat in Gramm über alle Einträge einer Kategorie (nur g/kg-Einträge). */
@@ -129,17 +127,6 @@ export function FoodStocks({
       ...s,
       foodStocks: (s.foodStocks ?? []).filter((e) => e.id !== id),
     }));
-  };
-
-  const subtractFromEntry = (id: string, amount: number) => {
-    if (amount <= 0) return;
-    update((s) => ({
-      ...s,
-      foodStocks: (s.foodStocks ?? []).map((e) =>
-        e.id === id ? { ...e, amount: Math.max(0, e.amount - amount) } : e,
-      ),
-    }));
-    setSubtractAmt((m) => ({ ...m, [id]: 0 }));
   };
 
   const addEntry = () => {
@@ -292,34 +279,6 @@ export function FoodStocks({
                     placeholder="auto"
                   />
                 </div>
-                <div className="w-24">
-                  <label className="text-xs text-slate-400 block mb-1">
-                    Verbraucht
-                  </label>
-                  <NumberInput
-                    value={subtractAmt[entry.id] || ""}
-                    onChange={(v) =>
-                      setSubtractAmt((m) => ({
-                        ...m,
-                        [entry.id]: Math.max(0, v),
-                      }))
-                    }
-                    min={0}
-                    placeholder="0"
-                  />
-                </div>
-                <Button
-                  tone="purple"
-                  onClick={() =>
-                    subtractFromEntry(entry.id, subtractAmt[entry.id] || 0)
-                  }
-                  disabled={
-                    !(subtractAmt[entry.id] && subtractAmt[entry.id] > 0)
-                  }
-                  className="!px-3"
-                >
-                  − abziehen
-                </Button>
                 <Button
                   tone="slate"
                   onClick={() => removeEntry(entry.id)}
