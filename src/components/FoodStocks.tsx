@@ -94,6 +94,25 @@ export function FoodStocks({
 
   const stocks = state.foodStocks ?? [];
 
+  /** Summiert Vorrat in Gramm über alle Einträge einer Kategorie (nur g/kg-Einträge). */
+  const sumGrams = (cat: FoodCategory): number =>
+    stocks
+      .filter((e) => e.category === cat)
+      .reduce((acc, e) => {
+        const factor = unitInGrams(e.unit);
+        if (factor === null) return acc;
+        return acc + e.amount * factor;
+      }, 0);
+
+  const tfTotalG = sumGrams("TF");
+  const barfTotalG = sumGrams("BARF");
+  const tfTotalDays =
+    d.tfGPerDay > 0 ? Math.floor(tfTotalG / d.tfGPerDay) : null;
+  const barfTotalDays =
+    d.barfGPerDay > 0 ? Math.floor(barfTotalG / d.barfGPerDay) : null;
+  const hasTF = stocks.some((e) => e.category === "TF");
+  const hasBARF = stocks.some((e) => e.category === "BARF");
+
   const updateEntry = (id: string, patch: Partial<FoodStockEntry>) => {
     update((s) => ({
       ...s,
@@ -391,6 +410,50 @@ export function FoodStocks({
           <Button tone="emerald" onClick={() => setAdding(true)}>
             ➕ Futter hinzufügen
           </Button>
+        </div>
+      )}
+
+      {(hasTF || hasBARF) && (
+        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/50 p-3 text-sm space-y-1">
+          <div className="font-semibold text-slate-200 mb-1">
+            Gesamt-Reichweite
+          </div>
+          {hasTF && (
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-300">
+                Trockenfutter: {formatAmount(tfTotalG, "g")}
+              </span>
+              <span
+                className={
+                  tfTotalDays !== null && tfTotalDays <= 7
+                    ? "text-amber-300 font-semibold"
+                    : "text-emerald-300 font-semibold"
+                }
+              >
+                {tfTotalDays !== null
+                  ? `reicht ca. ${tfTotalDays} Tage`
+                  : "—"}
+              </span>
+            </div>
+          )}
+          {hasBARF && (
+            <div className="flex justify-between gap-2">
+              <span className="text-slate-300">
+                BARF: {formatAmount(barfTotalG, "g")}
+              </span>
+              <span
+                className={
+                  barfTotalDays !== null && barfTotalDays <= 7
+                    ? "text-amber-300 font-semibold"
+                    : "text-emerald-300 font-semibold"
+                }
+              >
+                {barfTotalDays !== null
+                  ? `reicht ca. ${barfTotalDays} Tage`
+                  : "—"}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
