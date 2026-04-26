@@ -20,7 +20,8 @@ const UNIT_OPTIONS: { value: FoodUnit; label: string }[] = [
 const CATEGORY_OPTIONS: { value: FoodCategory; label: string }[] = [
   { value: "TF", label: "Trockenfutter" },
   { value: "BARF", label: "BARF" },
-  { value: "andere", label: "Andere (Snacks, Nass, …)" },
+  { value: "NF", label: "Nassfutter" },
+  { value: "andere", label: "Andere (Snacks, …)" },
 ];
 
 const DEFAULT_LOW_DAYS = 7;

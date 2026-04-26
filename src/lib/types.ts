@@ -32,7 +32,7 @@ export interface Reminder {
 
 export type FoodUnit = "g" | "kg" | "Stück" | "Beutel" | "Dose";
 
-export type FoodCategory = "TF" | "BARF" | "andere";
+export type FoodCategory = "TF" | "BARF" | "NF" | "andere";
 
 export interface FoodStockEntry {
   id: string;
