@@ -401,9 +401,7 @@ export function FoodStocks({
           disabled={fedToday || dailyForToday === 0}
           className="flex-1"
         >
-          {fedToday
-            ? `✓ Heute gefüttert (−${dailyForToday} g ${todaysCategory})`
-            : `☑️ Heute gefüttert (−${dailyForToday} g ${todaysCategory})`}
+          {fedToday ? "✓ Heute gefüttert" : "☑️ Heute gefüttert"}
         </Button>
         {fedToday && (
           <Button tone="slate" onClick={undoFeed}>
