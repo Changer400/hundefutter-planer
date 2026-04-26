@@ -1,0 +1,12 @@
+name = "hundefutter-planer"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hundefutter-planer"
+database_id = "9e9f9c41-74c6-4489-ab8a-7022d4bb13bb"
+
+[vars]
+VAPID_PUBLIC_KEY = "BFl0Mx6u7wgdDmagoHDX2cGSPvZZEUtEtnlnc94Up__FgUvxhb1r3rUAavHtm7k5IH4v5C5lE9qKCInCAIA9rgI"
+VAPID_SUBJECT = "mailto:muellmuell037@gmail.com"
