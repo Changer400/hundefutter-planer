@@ -72,6 +72,9 @@ export interface AppState {
   lastFedDate: string | null;
   lastFedEntryId?: string | null;
   lastFedAmount?: number | null;
+  feedAutoEnabled?: boolean;
+  feedSchedule?: Partial<Record<DayKey, { entryId: string; amount: number }>>;
+  feedOverride?: { date: string; entryId: string; amount: number } | null;
   reminders: Reminder;
   weekPlan: Record<DayKey, FoodType>;
   shoppingDone: Record<string, boolean>;

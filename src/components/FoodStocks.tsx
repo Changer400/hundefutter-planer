@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   AppState,
+  DayKey,
   FoodCategory,
   FoodStockEntry,
   FoodUnit,
 } from "../lib/types";
+import { DAYS } from "../lib/types";
 import { ageInMonths, dailyAmounts, isoToday, todayKey } from "../lib/calc";
-import { Button, Card, NumberInput, Select, TextInput } from "./ui";
+import { Button, Card, Checkbox, NumberInput, Select, TextInput } from "./ui";
 import { useNotificationStatus } from "../lib/notifications";
 
 const UNIT_OPTIONS: { value: FoodUnit; label: string }[] = [
@@ -199,6 +201,69 @@ export function FoodStocks({
       };
     });
   };
+
+  // Auto-Feed: effektiver Plan für heute
+  const todayDay = todayKey();
+  const effectivePlan = (() => {
+    const ov = state.feedOverride;
+    if (ov && ov.date === today && ov.entryId && ov.amount > 0) return ov;
+    const w = state.feedSchedule?.[todayDay];
+    if (w && w.entryId && w.amount > 0)
+      return { date: today, entryId: w.entryId, amount: w.amount };
+    return null;
+  })();
+
+  const autoFedRef = useRef(false);
+  useEffect(() => {
+    if (autoFedRef.current) return;
+    if (!state.feedAutoEnabled) return;
+    if (state.lastFedDate === today) return;
+    if (!effectivePlan) return;
+    if (!stocks.find((e) => e.id === effectivePlan.entryId)) return;
+    autoFedRef.current = true;
+    update((s) => ({
+      ...s,
+      foodStocks: (s.foodStocks ?? []).map((e) =>
+        e.id === effectivePlan.entryId
+          ? { ...e, amount: Math.max(0, e.amount - effectivePlan.amount) }
+          : e,
+      ),
+      lastFedDate: today,
+      lastFedEntryId: effectivePlan.entryId,
+      lastFedAmount: effectivePlan.amount,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.feedAutoEnabled, state.lastFedDate, today, effectivePlan?.entryId]);
+
+  const setScheduleSlot = (
+    day: DayKey,
+    patch: Partial<{ entryId: string; amount: number }>,
+  ) => {
+    update((s) => {
+      const cur = s.feedSchedule?.[day] ?? { entryId: "", amount: 0 };
+      return {
+        ...s,
+        feedSchedule: { ...(s.feedSchedule ?? {}), [day]: { ...cur, ...patch } },
+      };
+    });
+  };
+
+  const setOverride = (
+    patch: Partial<{ entryId: string; amount: number }> | null,
+  ) => {
+    update((s) => {
+      if (patch === null) return { ...s, feedOverride: null };
+      const cur = s.feedOverride && s.feedOverride.date === today
+        ? s.feedOverride
+        : { date: today, entryId: "", amount: 0 };
+      return {
+        ...s,
+        feedOverride: { ...cur, date: today, ...patch },
+      };
+    });
+  };
+
+  const [autoConfigOpen, setAutoConfigOpen] = useState(false);
 
   return (
     <Card title="📦 Futter-Vorrat" tone="amber">
@@ -457,6 +522,165 @@ export function FoodStocks({
                   ? `reicht ca. ${barfTotalDays} Tage`
                   : "—"}
               </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {stocks.length > 0 && (
+        <div className="mt-4 rounded-lg border border-slate-700 bg-slate-900/40 p-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={!!state.feedAutoEnabled}
+                onChange={(v) =>
+                  update((s) => ({ ...s, feedAutoEnabled: v }))
+                }
+                label={
+                  <span className="text-sm text-slate-200 font-semibold">
+                    🤖 Automatisch abziehen am Tagesanfang
+                  </span>
+                }
+              />
+            </div>
+            <button
+              type="button"
+              className="text-xs text-emerald-300 hover:text-emerald-200 underline"
+              onClick={() => setAutoConfigOpen((v) => !v)}
+            >
+              {autoConfigOpen ? "Plan ausblenden" : "Plan bearbeiten"}
+            </button>
+          </div>
+
+          {(state.feedAutoEnabled || autoConfigOpen) && effectivePlan && (
+            <div className="mt-2 text-xs text-slate-400">
+              Heute geplant:{" "}
+              <span className="text-emerald-300">
+                {stocks.find((e) => e.id === effectivePlan.entryId)?.name ??
+                  "(unbekannt)"}{" "}
+                · {effectivePlan.amount}{" "}
+                {stocks.find((e) => e.id === effectivePlan.entryId)?.unit ??
+                  "g"}
+              </span>{" "}
+              {state.feedAutoEnabled && state.lastFedDate === today && (
+                <span className="text-slate-500">— heute schon abgezogen</span>
+              )}
+            </div>
+          )}
+
+          {autoConfigOpen && (
+            <div className="mt-3 space-y-3">
+              {/* Heute (Override) */}
+              <div className="rounded border border-emerald-800 bg-emerald-900/20 p-2">
+                <div className="text-xs font-semibold text-emerald-200 mb-2">
+                  Nur für heute (überschreibt Wochenplan)
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex-1 min-w-[180px]">
+                    <Select<string>
+                      value={
+                        state.feedOverride?.date === today
+                          ? state.feedOverride.entryId
+                          : ""
+                      }
+                      onChange={(v) => {
+                        if (!v) return;
+                        const e = stocks.find((s) => s.id === v);
+                        setOverride({
+                          entryId: v,
+                          amount: e ? suggestedAmount(e) : 0,
+                        });
+                      }}
+                      options={[
+                        { value: "", label: "— kein Override —" },
+                        ...stocks.map((e) => ({
+                          value: e.id,
+                          label: e.name || "(ohne Name)",
+                        })),
+                      ]}
+                    />
+                  </div>
+                  <div className="w-28">
+                    <NumberInput
+                      value={
+                        state.feedOverride?.date === today
+                          ? state.feedOverride.amount || ""
+                          : ""
+                      }
+                      onChange={(v) =>
+                        setOverride({ amount: Math.max(0, v) })
+                      }
+                      min={0}
+                      placeholder="Menge"
+                    />
+                  </div>
+                  {state.feedOverride?.date === today && (
+                    <Button tone="slate" onClick={() => setOverride(null)}>
+                      Override entfernen
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Wochenplan */}
+              <div>
+                <div className="text-xs font-semibold text-slate-200 mb-2">
+                  Standard pro Wochentag
+                </div>
+                <div className="space-y-1">
+                  {DAYS.map((day) => {
+                    const slot = state.feedSchedule?.[day];
+                    return (
+                      <div
+                        key={day}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <div className="w-24 text-sm text-slate-300">
+                          {day}
+                        </div>
+                        <div className="flex-1 min-w-[160px]">
+                          <Select<string>
+                            value={slot?.entryId ?? ""}
+                            onChange={(v) => {
+                              if (!v) {
+                                setScheduleSlot(day, { entryId: "", amount: 0 });
+                                return;
+                              }
+                              const e = stocks.find((s) => s.id === v);
+                              setScheduleSlot(day, {
+                                entryId: v,
+                                amount:
+                                  slot?.amount && slot.amount > 0
+                                    ? slot.amount
+                                    : e
+                                      ? suggestedAmount(e)
+                                      : 0,
+                              });
+                            }}
+                            options={[
+                              { value: "", label: "— nichts —" },
+                              ...stocks.map((e) => ({
+                                value: e.id,
+                                label: e.name || "(ohne Name)",
+                              })),
+                            ]}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <NumberInput
+                            value={slot?.amount || ""}
+                            onChange={(v) =>
+                              setScheduleSlot(day, { amount: Math.max(0, v) })
+                            }
+                            min={0}
+                            placeholder="Menge"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>
