@@ -21,6 +21,13 @@ export function InputSection({
   const d = dailyAmounts(state.weightKg, months);
   const humanYears = humanAgeYears(months, state.weightKg);
 
+  const dogAgeStr =
+    months < 12
+      ? `${months.toFixed(1)} Mon`
+      : `${(months / 12).toFixed(1)} Jahre`;
+  const humanAgeStr = formatHumanAge(humanYears).replace(" (Mensch)", "");
+  const ageCombined = `🐶 ${dogAgeStr}  ·  🧑 ${humanAgeStr}`;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card title="🐾 Eingabe – bitte anpassen" tone="green">
@@ -81,10 +88,7 @@ export function InputSection({
           <tbody className="divide-y divide-slate-800">
             <Row label="Alter (Wochen):" value={weeks.toFixed(1)} unit="Wo" />
             <Row label="Alter (Monate):" value={months.toFixed(1)} unit="Mon" />
-            <Row
-              label="🧑 Menschenalter (ca.):"
-              value={formatHumanAge(humanYears)}
-            />
+            <Row label="Hund / Mensch:" value={ageCombined} />
             <Row
               label="BARF-Anteil (% vom KG/Tag):"
               value={`${Math.round(d.barfPct * 100)}%`}
