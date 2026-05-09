@@ -72,6 +72,29 @@ export function totalGForType(
   return DAYS.filter((d) => weekPlan[d] === type).length * perDay;
 }
 
+/**
+ * Hunde-Alter in Menschenjahre umrechnen.
+ * - Welpen-Phase (0–12 Mon): linear auf 15 Jahre skaliert
+ * - 1.–2. Lebensjahr: 15 → 24 Jahre
+ * - Danach: +4 (klein), +5 (mittel), +6 (groß), +7 (Riesen) pro Hundejahr
+ */
+export function humanAgeYears(ageMonths: number, weightKg: number): number {
+  if (ageMonths <= 0) return 0;
+  if (ageMonths <= 12) return (ageMonths / 12) * 15;
+  if (ageMonths <= 24) return 15 + ((ageMonths - 12) / 12) * 9;
+  const perYear =
+    weightKg < 10 ? 4 : weightKg < 25 ? 5 : weightKg < 45 ? 6 : 7;
+  return 24 + ((ageMonths - 24) / 12) * perYear;
+}
+
+export function formatHumanAge(years: number): string {
+  if (years < 2) {
+    const months = Math.round(years * 12);
+    return `${months} Mon. (Mensch)`;
+  }
+  return `${years.toFixed(1)} Jahre (Mensch)`;
+}
+
 export function isoToday(d = new Date()): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
