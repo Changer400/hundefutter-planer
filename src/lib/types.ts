@@ -30,6 +30,22 @@ export interface Reminder {
   abends: string;
 }
 
+export type FoodUnit = "g" | "kg" | "Stück" | "Beutel" | "Dose";
+
+export type FoodCategory = "TF" | "BARF" | "NF" | "andere";
+
+export interface FoodStockEntry {
+  id: string;
+  name: string;
+  amount: number;
+  unit: FoodUnit;
+  category: FoodCategory;
+  /** Tagesverbrauch in derselben Einheit wie `unit`. Undefined → auto bei TF/BARF in g/kg. */
+  dailyConsumption?: number;
+  /** Warnschwelle in Tagen. Default = 7. */
+  lowDays?: number;
+}
+
 export interface CustomShoppingRow {
   id: string;
   name: string;
@@ -54,9 +70,15 @@ export interface AppState {
   defaultFoodType: FoodType;
   stockG: number;
   lastFedDate: string | null;
+  lastFedEntryId?: string | null;
+  lastFedAmount?: number | null;
+  feedAutoEnabled?: boolean;
+  feedSchedule?: Partial<Record<DayKey, { entryId: string; amount: number }>>;
+  feedOverride?: { date: string; entryId: string; amount: number } | null;
   reminders: Reminder;
   weekPlan: Record<DayKey, FoodType>;
   shoppingDone: Record<string, boolean>;
   customShopping: CustomShoppingRow[];
   appointments: Appointment[];
+  foodStocks: FoodStockEntry[];
 }

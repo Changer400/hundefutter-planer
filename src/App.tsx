@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { InputSection } from "./components/InputSection";
-import { StockSection } from "./components/StockSection";
+import { FoodStocks } from "./components/FoodStocks";
 import { RemindersSection } from "./components/RemindersSection";
 import { WeekPlan } from "./components/WeekPlan";
 import { Supplements } from "./components/Supplements";
@@ -80,7 +80,7 @@ function AppForUser({
       ) : (
         <main className="max-w-6xl mx-auto p-3 sm:p-6 space-y-4">
           <InputSection state={state} update={update} />
-          <StockSection state={state} update={update} />
+          <FoodStocks state={state} update={update} />
           <RemindersSection state={state} update={update} />
           <WeekPlan state={state} update={update} />
           <Supplements />
