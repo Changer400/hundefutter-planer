@@ -1,4 +1,4 @@
-import type { DayKey, FoodType } from "./types";
+import type { DayKey, FoodType, MealKey } from "./types";
 import { DAYS } from "./types";
 
 /** Age helpers */
@@ -38,15 +38,36 @@ export function feedingRule(ageMonths: number): FeedingRule {
 /** Trockenfutter is roughly 1/3 of BARF by weight (calorie density ~3x). */
 export const TF_RATIO = 1 / 3;
 
-export function dailyAmounts(weightKg: number, ageMonths: number) {
+export function dailyAmounts(weightKg: number, ageMonths: number, customMealsPerDay?: number) {
   const rule = feedingRule(ageMonths);
   const barfGPerDay = Math.round(weightKg * 1000 * rule.barfPct);
   const tfGPerDay = Math.round(barfGPerDay * TF_RATIO);
+  const mealsPerDay = customMealsPerDay && customMealsPerDay > 0
+    ? customMealsPerDay
+    : rule.mealsPerDay;
   return {
     ...rule,
+    mealsPerDay,
     barfGPerDay,
     tfGPerDay,
   };
+}
+
+/** Sichtbare Mahlzeiten je nach mealsPerDay. */
+export function visibleMeals(mealsPerDay: number): MealKey[] {
+  switch (mealsPerDay) {
+    case 1:
+      return ["morgens"];
+    case 2:
+      return ["morgens", "abends"];
+    case 3:
+      return ["morgens", "mittags", "abends"];
+    case 5:
+      return ["morgens", "mittags", "nachmittags", "abends"];
+    case 4:
+    default:
+      return ["morgens", "mittags", "nachmittags", "abends"];
+  }
 }
 
 export function perMeal(totalG: number, meals: number): number {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { AppState, MealKey } from "../lib/types";
-import { ageInMonths, dailyAmounts, perMeal } from "../lib/calc";
+import { ageInMonths, dailyAmounts, perMeal, visibleMeals } from "../lib/calc";
 import { Button, Card, TimeInput } from "./ui";
 import {
   testNotification,
@@ -31,7 +31,8 @@ export function RemindersSection({
   const notifStatus = useNotificationStatus();
   const firedRef = useRef<Record<string, boolean>>({});
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
+  const meals = visibleMeals(d.mealsPerDay);
 
   const [pushCap, setPushCap] = useState<PushCapability>("unsupported");
   const [pushBusy, setPushBusy] = useState(false);
@@ -205,7 +206,7 @@ export function RemindersSection({
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {(Object.keys(MEAL_LABELS) as MealKey[]).map((meal) => (
+        {meals.map((meal) => (
           <div
             key={meal}
             className="rounded border border-purple-900 bg-purple-950/40 p-3"
