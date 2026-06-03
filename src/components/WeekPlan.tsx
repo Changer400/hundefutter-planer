@@ -5,7 +5,9 @@ import {
   dailyAmounts,
   perMeal,
   todayKey,
+  visibleMeals,
 } from "../lib/calc";
+import type { MealKey } from "../lib/types";
 import { Card, Select } from "./ui";
 
 export function WeekPlan({
@@ -18,24 +20,30 @@ export function WeekPlan({
   const months = ageInMonths(state.birthDate);
   const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
   const today = todayKey();
+  const meals = visibleMeals(d.mealsPerDay);
+
+  const MEAL_LABELS: Record<MealKey, string> = {
+    morgens: "Morgens",
+    mittags: "Mittags",
+    nachmittags: "Nachmittags",
+    abends: "Abends",
+  };
 
   const barfDays = DAYS.filter((day) => state.weekPlan[day] === "BARF").length;
   const tfDays = DAYS.filter((day) => state.weekPlan[day] === "TF").length;
   const weekTotal =
     barfDays * d.barfGPerDay + tfDays * d.tfGPerDay;
 
-  // Determine "current meal arrow" — first meal whose time is >= now
+  // Determine "current meal arrow" — first visible meal whose time is >= now
   const currentMeal = (() => {
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
-    const entries: { key: "morgens" | "mittags" | "nachmittags" | "abends"; min: number }[] = (
-      ["morgens", "mittags", "nachmittags", "abends"] as const
-    ).map((k) => {
+    const entries = meals.map((k) => {
       const [hh, mm] = (state.reminders[k] || "00:00").split(":").map(Number);
       return { key: k, min: hh * 60 + mm };
     });
     const next = entries.find((e) => e.min >= nowMin);
-    return next?.key ?? "morgens";
+    return next?.key ?? meals[0];
   })();
 
   return (
@@ -49,26 +57,14 @@ export function WeekPlan({
               <th className="px-2 py-2 text-right">Menge/Mahlzeit</th>
               <th className="px-2 py-2 text-right">Mahlzeiten</th>
               <th className="px-2 py-2 text-right">Tages-Menge</th>
-              <th
-                className={`px-2 py-2 text-right ${currentMeal === "morgens" ? "bg-emerald-900/60 text-emerald-200" : ""}`}
-              >
-                {currentMeal === "morgens" ? "▶ " : ""}Morgens (g)
-              </th>
-              <th
-                className={`px-2 py-2 text-right ${currentMeal === "mittags" ? "bg-emerald-900/60 text-emerald-200" : ""}`}
-              >
-                {currentMeal === "mittags" ? "▶ " : ""}Mittags (g)
-              </th>
-              <th
-                className={`px-2 py-2 text-right ${currentMeal === "nachmittags" ? "bg-emerald-900/60 text-emerald-200" : ""}`}
-              >
-                {currentMeal === "nachmittags" ? "▶ " : ""}Nachmittags (g)
-              </th>
-              <th
-                className={`px-2 py-2 text-right ${currentMeal === "abends" ? "bg-emerald-900/60 text-emerald-200" : ""}`}
-              >
-                {currentMeal === "abends" ? "▶ " : ""}Abends (g)
-              </th>
+              {meals.map((meal) => (
+                <th
+                  key={meal}
+                  className={`px-2 py-2 text-right ${currentMeal === meal ? "bg-emerald-900/60 text-emerald-200" : ""}`}
+                >
+                  {currentMeal === meal ? "▶ " : ""}{MEAL_LABELS[meal]} (g)
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -116,30 +112,15 @@ export function WeekPlan({
                   <td className="px-2 py-2 text-right text-amber-300 font-bold">
                     {perDay} g
                   </td>
-                  <td
-                    className={`px-2 py-2 text-right ${isToday && currentMeal === "morgens" ? "text-emerald-200 font-bold" : "text-slate-300"}`}
-                  >
-                    {isToday && currentMeal === "morgens" ? "▶ " : ""}
-                    {pm} g
-                  </td>
-                  <td
-                    className={`px-2 py-2 text-right ${isToday && currentMeal === "mittags" ? "text-emerald-200 font-bold" : "text-slate-300"}`}
-                  >
-                    {isToday && currentMeal === "mittags" ? "▶ " : ""}
-                    {pm} g
-                  </td>
-                  <td
-                    className={`px-2 py-2 text-right ${isToday && currentMeal === "nachmittags" ? "text-emerald-200 font-bold" : "text-slate-300"}`}
-                  >
-                    {isToday && currentMeal === "nachmittags" ? "▶ " : ""}
-                    {pm} g
-                  </td>
-                  <td
-                    className={`px-2 py-2 text-right ${isToday && currentMeal === "abends" ? "text-emerald-200 font-bold" : "text-slate-300"}`}
-                  >
-                    {isToday && currentMeal === "abends" ? "▶ " : ""}
-                    {pm} g
-                  </td>
+                  {meals.map((meal) => (
+                    <td
+                      key={meal}
+                      className={`px-2 py-2 text-right ${isToday && currentMeal === meal ? "text-emerald-200 font-bold" : "text-slate-300"}`}
+                    >
+                      {isToday && currentMeal === meal ? "▶ " : ""}
+                      {pm} g
+                    </td>
+                  ))}
                 </tr>
               );
             })}
@@ -152,7 +133,7 @@ export function WeekPlan({
               <td className="px-2 py-2 text-right text-lg">
                 {weekTotal.toLocaleString("de-DE")} g
               </td>
-              <td colSpan={4} />
+              <td colSpan={meals.length} />
             </tr>
             <tr className="text-xs text-slate-400">
               <td className="px-2 py-2" colSpan={4}>
@@ -161,7 +142,7 @@ export function WeekPlan({
                 {"   "}Anzahl TF-Tage:{" "}
                 <span className="text-amber-300 font-semibold">{tfDays}</span>
               </td>
-              <td colSpan={5} />
+              <td colSpan={meals.length + 1} />
             </tr>
           </tfoot>
         </table>

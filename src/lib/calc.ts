@@ -1,4 +1,4 @@
-import type { DayKey, FoodType } from "./types";
+import type { DayKey, FoodType, MealKey } from "./types";
 import { DAYS } from "./types";
 
 /** Age helpers */
@@ -51,6 +51,23 @@ export function dailyAmounts(weightKg: number, ageMonths: number, customMealsPer
     barfGPerDay,
     tfGPerDay,
   };
+}
+
+/** Sichtbare Mahlzeiten je nach mealsPerDay. */
+export function visibleMeals(mealsPerDay: number): MealKey[] {
+  switch (mealsPerDay) {
+    case 1:
+      return ["morgens"];
+    case 2:
+      return ["morgens", "abends"];
+    case 3:
+      return ["morgens", "mittags", "abends"];
+    case 5:
+      return ["morgens", "mittags", "nachmittags", "abends"];
+    case 4:
+    default:
+      return ["morgens", "mittags", "nachmittags", "abends"];
+  }
 }
 
 export function perMeal(totalG: number, meals: number): number {
