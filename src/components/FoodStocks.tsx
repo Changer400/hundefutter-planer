@@ -78,7 +78,7 @@ export function FoodStocks({
   update: (u: (s: AppState) => AppState) => void;
 }) {
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
   const today = isoToday();
   const fedToday = state.lastFedDate === today;
   const todaysCategory: FoodCategory = state.weekPlan[todayKey()];
@@ -93,6 +93,8 @@ export function FoodStocks({
     category: "TF",
   });
   const stocks = state.foodStocks ?? [];
+
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   // Feed-Dialog
   const [feedOpen, setFeedOpen] = useState(false);
@@ -178,6 +180,8 @@ export function FoodStocks({
     if (!draft.name.trim() || draft.amount <= 0) return;
     const newEntry: FoodStockEntry = { ...draft, id: genId() };
     update((s) => ({ ...s, foodStocks: [...(s.foodStocks ?? []), newEntry] }));
+    setSavedMsg(`„${draft.name}" wurde gespeichert!`);
+    setTimeout(() => setSavedMsg(null), 3000);
     setAdding(false);
     setDraft({ id: "", name: "", amount: 0, unit: "g", category: "TF" });
   };
@@ -267,6 +271,12 @@ export function FoodStocks({
 
   return (
     <Card title="📦 Futter-Vorrat" tone="amber">
+      {savedMsg && (
+        <div className="mb-3 rounded-lg border border-emerald-600 bg-emerald-900/50 p-3 text-sm text-emerald-200 font-semibold animate-pulse">
+          ✔ {savedMsg}
+        </div>
+      )}
+
       {stocks.length === 0 && (
         <div className="text-sm text-slate-400 mb-3">
           Noch kein Futter eingetragen. Füge deinen ersten Vorrat hinzu.
@@ -462,7 +472,7 @@ export function FoodStocks({
               />
             </div>
           </div>
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-2 justify-end mt-2">
             <Button tone="slate" onClick={() => setAdding(false)}>
               Abbrechen
             </Button>
@@ -470,10 +480,16 @@ export function FoodStocks({
               tone="emerald"
               onClick={addEntry}
               disabled={!draft.name.trim() || draft.amount <= 0}
+              className="!text-base !px-6 !py-2 font-bold"
             >
-              Hinzufügen
+              ✔ Speichern
             </Button>
           </div>
+          {!draft.name.trim() && draft.amount <= 0 && (
+            <p className="text-xs text-amber-400 mt-1 text-right">
+              Bitte Name und Menge eingeben.
+            </p>
+          )}
         </div>
       ) : (
         <div className="mt-3">

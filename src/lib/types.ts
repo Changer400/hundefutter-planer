@@ -68,6 +68,8 @@ export interface AppState {
   birthDate: string;
   weightKg: number;
   defaultFoodType: FoodType;
+  /** Benutzerdefinierte Mahlzeiten pro Tag. undefined/0 → automatisch je Alter. */
+  customMealsPerDay?: number;
   stockG: number;
   lastFedDate: string | null;
   lastFedEntryId?: string | null;

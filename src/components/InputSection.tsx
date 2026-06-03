@@ -3,6 +3,7 @@ import {
   ageInMonths,
   ageInWeeks,
   dailyAmounts,
+  feedingRule,
   formatHumanAge,
   humanAgeYears,
   perMeal,
@@ -18,7 +19,8 @@ export function InputSection({
 }) {
   const weeks = ageInWeeks(state.birthDate);
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
+  const autoMeals = feedingRule(months).mealsPerDay;
   const humanYears = humanAgeYears(months, state.weightKg);
 
   const dogAgeStr =
@@ -66,6 +68,30 @@ export function InputSection({
             options={[
               { value: "TF", label: "🥣 Trockenfutter" },
               { value: "BARF", label: "🥩 BARF" },
+            ]}
+          />
+        </Field>
+
+        <Field
+          label="Mahlzeiten pro Tag"
+          hint={`Empfohlen: ${autoMeals}× (je Alter). Wähle 0 für automatisch.`}
+        >
+          <Select<string>
+            value={String(state.customMealsPerDay ?? 0)}
+            onChange={(v) => {
+              const n = Number(v);
+              update((s) => ({
+                ...s,
+                customMealsPerDay: n === 0 ? undefined : n,
+              }));
+            }}
+            options={[
+              { value: "0", label: `Automatisch (${autoMeals}×)` },
+              { value: "1", label: "1× pro Tag" },
+              { value: "2", label: "2× pro Tag" },
+              { value: "3", label: "3× pro Tag" },
+              { value: "4", label: "4× pro Tag" },
+              { value: "5", label: "5× pro Tag" },
             ]}
           />
         </Field>

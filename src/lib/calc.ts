@@ -38,12 +38,16 @@ export function feedingRule(ageMonths: number): FeedingRule {
 /** Trockenfutter is roughly 1/3 of BARF by weight (calorie density ~3x). */
 export const TF_RATIO = 1 / 3;
 
-export function dailyAmounts(weightKg: number, ageMonths: number) {
+export function dailyAmounts(weightKg: number, ageMonths: number, customMealsPerDay?: number) {
   const rule = feedingRule(ageMonths);
   const barfGPerDay = Math.round(weightKg * 1000 * rule.barfPct);
   const tfGPerDay = Math.round(barfGPerDay * TF_RATIO);
+  const mealsPerDay = customMealsPerDay && customMealsPerDay > 0
+    ? customMealsPerDay
+    : rule.mealsPerDay;
   return {
     ...rule,
+    mealsPerDay,
     barfGPerDay,
     tfGPerDay,
   };

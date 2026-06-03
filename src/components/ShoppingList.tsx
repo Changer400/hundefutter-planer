@@ -84,7 +84,7 @@ export function ShoppingList({
   update: (u: (s: AppState) => AppState) => void;
 }) {
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
   const barfWeekTotal = totalGForType(
     state.weekPlan,
     state.weightKg,

@@ -31,7 +31,7 @@ export function RemindersSection({
   const notifStatus = useNotificationStatus();
   const firedRef = useRef<Record<string, boolean>>({});
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
 
   const [pushCap, setPushCap] = useState<PushCapability>("unsupported");
   const [pushBusy, setPushBusy] = useState(false);

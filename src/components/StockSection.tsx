@@ -11,7 +11,7 @@ export function StockSection({
   update: (u: (s: AppState) => AppState) => void;
 }) {
   const months = ageInMonths(state.birthDate);
-  const d = dailyAmounts(state.weightKg, months);
+  const d = dailyAmounts(state.weightKg, months, state.customMealsPerDay);
   const today = isoToday();
   const fedToday = state.lastFedDate === today;
   const notifStatus = useNotificationStatus();
